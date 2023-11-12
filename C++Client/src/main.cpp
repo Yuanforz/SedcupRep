@@ -43,6 +43,7 @@ int respondAct(GameMsg& msg, SeedCup& server)
         default:break;
         }
     }
+	return 0;
 }
 
 
