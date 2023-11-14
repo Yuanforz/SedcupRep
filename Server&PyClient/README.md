@@ -1,5 +1,26 @@
 # 开发指南
 
+
+## 运行游戏的方法
+
+首先运行服务端，接着运行两个客户端（bot也算是一个客户端）。对于服务端和客户端的功能描述，请参考下文“Client-Server运行流程”
+
+```shell
+# launch server
+cd bin
+./server # if run into permission denied problem, run `chmod +x server` first
+
+# launch bot
+cd bin
+./silly-bot # if run into permission denied problem, run `chmod +x server` first
+
+# launch client, take python client as example
+cd client/python
+python main.py
+```
+
+<font color=red>注意，上述命令是运行三个可执行文件的命令，由于shell执行程序的时候会被当前程序占用（除非你用 &放在后台运行），因此三个程序并不能在同一个终端中运行。正确的做法是开三个终端分别运行。~~如果你神通广大~~，你也可以使用tmux等分屏在同一个终端中分出三个部分分别运行。</font>
+
 ## Client开发指南
 
 ### Client-Server运行流程
@@ -15,8 +36,9 @@
 
 #### 选手需要做些什么
 
-在本次比赛中，选手需要编写代码，根据client接收到的游戏状态信息进行决策，并将要让角色做出的动作（例如向上走一步或放置炸弹）回传给server
+在本次比赛中，选手需要编写代码，根据client接收到的游戏状态信息进行决策，并将要让角色做出的动作（例如向上走一步或放置炸弹）回传给server。
 
+<font color=red>注意，选手并不需要编写server端，因为游戏的机制是固定的。选手只需要修改client端，接收游戏的状态信息并让做出相应的动作即可。</font>
 
 ## 客户端代码
 
@@ -71,11 +93,13 @@ enum ActionType {
 };
 ```
 
-- ActionReq的packet样例
+- <font color=red>ActionReq的packet样例</font>
 
 ```json  
-{"type": 2, "data": {"playerID": 0, "actionType": 5}
+{"type": 2, "data": [{"playerID": 0, "actionType": 0}, {"playerID": 0, "actionType": 1}]}
 ```
+
+<font color=red>这里的data字段是一个列表，每一个元素代表一个动作，一个回合内可以在行动速度的限制下执行多个动作</font>
 
 
 ### Response协议

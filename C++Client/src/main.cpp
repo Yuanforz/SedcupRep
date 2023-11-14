@@ -13,12 +13,13 @@ using namespace seedcup;
 
 int respondAct(GameMsg& msg, SeedCup& server)
 {
-    ActionType action = SILENT;
     auto& player = msg.players[msg.player_id];
+    ActionType action = SILENT;
+    vector<ActionType> actionArray(player->speed, SILENT);
     for (int count = 0; count < player->speed; count++)
     {
-        action = act(msg, server, count);
-        server.TakeAction(action);        
+        action = act(msg, server, count); 
+        actionArray[count] = action;
         switch (action)
         {
         case MOVE_UP:
@@ -43,8 +44,10 @@ int respondAct(GameMsg& msg, SeedCup& server)
         default:break;
         }
     }
-	return 0;
+    server.TakeAction(actionArray);
+    return 0;
 }
+
 
 
 int main() {
