@@ -180,7 +180,7 @@ ActionType act(GameMsg& msg, SeedCup& server, int currentNum)
         }
     }
 
-    if (count > 100)
+    if (count > 20)
         returnnum = PLACED;
 
     switch (returnnum)
@@ -735,7 +735,7 @@ int Judgecollectionnecessity(vector<vector<POSITION>>& map,GameMsg& msg){
 	    auto player = msg.players[msg.player_id];
 	    int flag=0;
 	    for(int i=0;i<map.size();i++){
-	    	for(int j=0;j<=map.size();j++){
+	    	for(int j=0;j<map.size();j++){
 	    		if((msg.grid[i][j].item!=NULLITEM)&&(i>=player->x-5)&&(i<=player->x+5)&&(j<=player->y+5)&&(j>=player->y-5)) flag++;
 			}
 		}
