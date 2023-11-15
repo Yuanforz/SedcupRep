@@ -392,6 +392,14 @@ void FindSafeRegion(vector<vector<POSITION>>& array, GameMsg& msg)//0 is safe,n 
     //for (int i = 0; i < array.size(); i++)
     //    for (int j = 0; j < array.size(); j++)
     //        array[i][j].dangernum = array[i][j].dangernum ? (array[i][j].dangernum + 1) : 0;
+	    std::shared_ptr<Player> enemy = msg.players[FindEnemyID(msg)];
+ if(msg.players[FindEnemyID(msg)].invincible_time!=0){
+    	msg.grid[enemy->x-1][enemy->y].dangernum=6;
+    	msg.grid[enemy->x+1][enemy->y].dangernum=6;
+    	msg.grid[enemy->x][enemy->y-1].dangernum=6;
+    	msg.grid[enemy->x][enemy->y+1].dangernum=6;
+    	msg.grid[enemy->x][enemy->y].dangernum=6;
+	}
 }
 
 void FindRechableRegion(vector<vector<POSITION>>& array, GameMsg& msg)
