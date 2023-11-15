@@ -197,16 +197,16 @@ ActionType act(GameMsg& msg, SeedCup& server, int currentNum)
         break;
     }
     cout << "count is" << count<<endl;
-    // 设置随机操作
+    // 璁剧疆闅忔満鎿嶄綔
     return returnnum;
 }
 
 void printMap(const GameMsg& msg)
 {
 
-    // 打印自己的id
+    // 鎵撳嵃鑷繁鐨刬d
     std::cout << "self:" << msg.player_id << std::endl;
-    // 打印地图
+    // 鎵撳嵃鍦板浘
     //cout << endl << endl;
     printf("\n\n");
     auto& grid = msg.grid;
@@ -736,7 +736,7 @@ int Judgecollectionnecessity(vector<vector<POSITION>>& map,GameMsg& msg){
 	    int flag=0;
 	    for(int i=0;i<map.size();i++){
 	    	for(int j=0;j<=map.size();j++){
-	    		if((msg.grid[i][j].item!=NULLITEM)&&(i>=player->x-1)&&(i<=player->x+1)&&(j<=player->y+1)&&(j>=player->y-1)) flag++;
+	    		if((msg.grid[i][j].item!=NULLITEM)&&(i>=player->x-5)&&(i<=player->x+5)&&(j<=player->y+5)&&(j>=player->y-5)) flag++;
 			}
 		}
 		if(flag!=0) return 1;
@@ -747,7 +747,7 @@ POINT FindSuitableCollectionPosition(vector<vector<POSITION>>& map, GameMsg& msg
     POINT target(map.size() * 2, map.size() * 2);
     for(int i=0;i<map.size();i++){
 	    for(int j=0;j<map.size();j++){
-	    	if((msg.grid[i][j].item!=NULLITEM)&&(i>=player->x-1)&&(i<=player->x+1)&&(j<=player->y+1)&&(j>=player->y-1)&&
+	    	if((msg.grid[i][j].item!=NULLITEM)&&(i>=player->x-5)&&(i<=player->x+5)&&(j<=player->y+5)&&(j>=player->y-5)&&
 			(!map[i][j].dangernum)&&(calcDistance(map,msg,target.x,target.y,player->x,player->y)
                         > calcDistance(map, msg, i, j,player->x, player->y))){
 	    		target.x=i;
