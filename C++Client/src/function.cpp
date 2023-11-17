@@ -83,7 +83,7 @@ seedcup::ActionType Collection(vector<vector<POSITION>>& map,GameMsg& msg,POINT*
 
 ActionType act(GameMsg& msg, SeedCup& server, int currentNum)
 {
-    std::cout.setstate(std::ios_base::failbit);
+    //std::cout.setstate(std::ios_base::failbit);
     auto& player = msg.players[msg.player_id];
     auto& map = msg.grid;
     //printMap(msg);
