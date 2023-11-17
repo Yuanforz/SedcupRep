@@ -51,7 +51,7 @@ public:
 typedef struct tagPOSITION {
     int x = -1;
     int y = -1;
-    int dangernum = 0;//n means bomb be placed befor n
+    int dangernum = 0;//n means bomb be placed before n
     bool isBomb = 0;
     bool isRechable = 0;
     bool isItem = 0;
@@ -83,11 +83,10 @@ seedcup::ActionType Collection(vector<vector<POSITION>>& map,GameMsg& msg,POINT*
 
 ActionType act(GameMsg& msg, SeedCup& server, int currentNum)
 {
-    std::cout.setstate(std::ios_base::failbit);
+  //std::cout.setstate(std::ios_base::failbit);
     auto& player = msg.players[msg.player_id];
     auto& map = msg.grid;
-    //printMap(msg);
-    
+    printMap(msg);
     //static int prestate = 0;
     //int state = SetState(msg, prestate);
     vector<vector<POSITION>> positionmap(msg.grid.size(), vector<POSITION>(msg.grid.size()));
@@ -95,13 +94,13 @@ ActionType act(GameMsg& msg, SeedCup& server, int currentNum)
     //vector<vector<int>> safemap(msg.grid.size(), vector<int>(msg.grid.size(), 0));
     FindRechableRegion(positionmap, msg);
     FindSafeRegion(positionmap, msg);//由于实现原理，请放置在findreachableregion函数之后
-    for (int i = 0; i < msg.grid.size(); i++)
-    {
-        for (int j = 0; j < msg.grid.size(); j++)
-            cout << positionmap[i][j].dangernum * (positionmap[i][j].isBomb ? -1 : 1);
-            //cout << positionmap[i][j].isRechable;
-        cout << endl;
-    }
+    //for (int i = 0; i < msg.grid.size(); i++)
+    //{
+    //    for (int j = 0; j < msg.grid.size(); j++)
+    //        cout << positionmap[i][j].dangernum * (positionmap[i][j].isBomb ? -1 : 1);
+    //        //cout << positionmap[i][j].isRechable;
+    //    cout << endl;
+    //}
 
     POINT nextStepPosition;
     static int prestate = 0;//1 Attack 2 Mine 3 Run away 4 collect
@@ -233,7 +232,7 @@ ActionType act(GameMsg& msg, SeedCup& server, int currentNum)
 
 void printMap(const GameMsg& msg)
 {
-
+    printf("\x1b[H\x1b[2J");
     // 打印自己的id
     std::cout << "self:" << msg.player_id << std::endl;
     // 打印地图
@@ -245,46 +244,46 @@ void printMap(const GameMsg& msg)
             auto& area = grid[i][j];
             if (grid[i][j].block_id != -1) {
                 if (msg.blocks.find(grid[i][j].block_id)->second->removable) {
-                    printf("0 ");
+                    printf("🟦");
                 }
                 else {
-                    printf("N ");
+                    printf("墙");
                 }
             }
             else if (area.player_ids.size() != 0) {
                 if ((msg.players.find(msg.player_id)->second->x == i) &&
                     (msg.players.find(msg.player_id)->second->y == j))
-                    printf("M ");
+                    printf("我");
                 else
-                    printf("1 ");
+                    printf("敌");
             }
             else if (area.bomb_id != -1) {
-                printf("8 ");
+                printf("💣");
             }
             else if (area.item != seedcup::NULLITEM) {
                 switch (area.item) {
                 case seedcup::BOMB_NUM:
-                    cout << "a ";
+                    cout << "💊";
                     break;
                 case seedcup::BOMB_RANGE:
-                    cout << "b ";
+                    cout << "🧪";
                     break;
                 case seedcup::INVENCIBLE:
-                    cout << "c ";
+                    cout << "🗽";
                     break;
                 case seedcup::SHIELD:
-                    cout << "d ";
+                    cout << "🔰";
                     break;
                 case seedcup::HP:
-                    cout << "e ";
+                    cout << "💖";
                     break;
                 default:
-                    cout << "**";
+                    cout << "🛼";
                     break;
                 }
             }
             else {
-                printf("__");
+                printf("⬛");
             }
         }
         printf("\n");
@@ -308,7 +307,7 @@ void SpreadBomb(vector<vector<POSITION>>& array, GameMsg& msg, std::shared_ptr<B
     {
         if (startpoint.y - yleft > bombptr->bomb_range)
             break;
-        if (msg.grid[startpoint.x][yleft].block_id != -1)//exist block
+        if ((!array[startpoint.x][yleft].dangernum) && (msg.grid[startpoint.x][yleft].block_id != -1))//exist block
         {
             if (msg.blocks.find(msg.grid[startpoint.x][yleft].block_id)->second->removable)//removable
             {
@@ -332,7 +331,7 @@ void SpreadBomb(vector<vector<POSITION>>& array, GameMsg& msg, std::shared_ptr<B
     {
         if (yright - startpoint.y > bombptr->bomb_range)
             break;
-        if (msg.grid[startpoint.x][yright].block_id != -1)//exist block
+        if ((!array[startpoint.x][yright].dangernum) && (msg.grid[startpoint.x][yright].block_id != -1))
         {
             if (msg.blocks.find(msg.grid[startpoint.x][yright].block_id)->second->removable)//removable
             {
@@ -356,7 +355,7 @@ void SpreadBomb(vector<vector<POSITION>>& array, GameMsg& msg, std::shared_ptr<B
     {
         if (startpoint.x - xup > bombptr->bomb_range)
             break;
-        if (msg.grid[xup][startpoint.y].block_id != -1)//exist block
+        if ((!array[xup][startpoint.y].dangernum) && (msg.grid[xup][startpoint.y].block_id != -1))
         {
             if (msg.blocks.find(msg.grid[xup][startpoint.y].block_id)->second->removable)//removable
             {
@@ -380,7 +379,7 @@ void SpreadBomb(vector<vector<POSITION>>& array, GameMsg& msg, std::shared_ptr<B
     {
         if (xdown - startpoint.x > bombptr->bomb_range)
             break;
-        if (msg.grid[xdown][startpoint.y].block_id != -1)//exist block
+        if ((!array[xdown][startpoint.y].dangernum) && (msg.grid[xdown][startpoint.y].block_id != -1))
         {
             if (msg.blocks.find(msg.grid[xdown][startpoint.y].block_id)->second->removable)//removable
             {
@@ -408,6 +407,7 @@ void FindSafeRegion(vector<vector<POSITION>>& array, GameMsg& msg)//0 is safe,n 
     //Attention: maybe there is bomb place in current round 
     //Attention: may change msg value(bombs.lastplacetime)
     //由于实现原理，请放置在findreachableregion函数之后
+    //发现游戏新的判断机制，进行了一定的改进
     std::shared_ptr<Bomb> bombarr[10][100] = { 0 };
     std::shared_ptr<Bomb> bombptr;
     int bombIndex[10] = { 0 };
@@ -553,18 +553,18 @@ seedcup::ActionType FindWayPosition(vector<vector<POSITION>>& map, std::shared_p
     int mincost;
     vector<vector<bool>> checkedmap(map.size(), std::vector<bool>(map.size(), false));
     path.emplace_front(player->x, player->y);
-    cout << "Enter Way found\n";
+//    cout << "Enter Way found\n";
     cout << "target is" << target.x << target.y;
     while (!path.empty())
     {
-        cout << "Enter while\n";
+//        cout << "Enter while\n";
         current = path.front();
         cout << current.x << current.y;
         if ((current.x == target.x)
             && (current.y == target.y))
             break;
         checkedmap[current.x][current.y] = true;
-        cout << "Enter there\n";
+//        cout << "Enter there\n";
         mincostDirection = NULLD;
         mincost = calculateCost(0, 0, map.size(), map.size()) + 1;
         if ((current.x > 0) && (map[current.x - 1][current.y].isRechable) && (!checkedmap[current.x - 1][current.y]))
@@ -573,7 +573,7 @@ seedcup::ActionType FindWayPosition(vector<vector<POSITION>>& map, std::shared_p
             {
                 mincost = calculateCost(current.x - 1, current.y, target.x, target.y);
                 mincostDirection = UP;
-                cout << "1\n";
+ //               cout << "1\n";
             }
         }
         if ((current.y > 0) && (map[current.x][current.y - 1].isRechable) && (!checkedmap[current.x][current.y - 1]))
@@ -582,7 +582,7 @@ seedcup::ActionType FindWayPosition(vector<vector<POSITION>>& map, std::shared_p
             {
                 mincost = calculateCost(current.x, current.y - 1, target.x, target.y);
                 mincostDirection = LEFT;
-                cout << "2\n";
+ //               cout << "2\n";
             }
         }
         if ((current.x < map.size() - 1) && (map[current.x + 1][current.y].isRechable) && (!checkedmap[current.x + 1][current.y]))
@@ -591,7 +591,7 @@ seedcup::ActionType FindWayPosition(vector<vector<POSITION>>& map, std::shared_p
             {
                 mincost = calculateCost(current.x + 1, current.y, target.x, target.y);
                 mincostDirection = DOWN;
-                cout << "3\n";
+ //               cout << "3\n";
             }
         }
         if ((current.y < map.size() - 1) && (map[current.x][current.y + 1].isRechable) && (!checkedmap[current.x][current.y + 1]))
@@ -600,30 +600,30 @@ seedcup::ActionType FindWayPosition(vector<vector<POSITION>>& map, std::shared_p
             {
                 mincost = calculateCost(current.x, current.y + 1, target.x, target.y);
                 mincostDirection = RIGHT;
-                cout << "4\n";
+ //               cout << "4\n";
             }
         }
         switch (mincostDirection)
         {
         case NULLD:          
-            cout << "pop_front\n";
+ //           cout << "pop_front\n";
             path.pop_front();
             continue;
             break;
         case LEFT:
-            cout << "Choose " << current.x << "," << current.y - 1 << endl;
+//            cout << "Choose " << current.x << "," << current.y - 1 << endl;
             path.emplace_front(current.x, current.y - 1);
             break;
         case UP:
-            cout << "Choose " << current.x - 1 << "," << current.y << endl;
+//            cout << "Choose " << current.x - 1 << "," << current.y << endl;
             path.emplace_front(current.x - 1, current.y);
             break;
         case RIGHT:
-            cout << "Choose " << current.x << "," << current.y + 1 << endl;
+//            cout << "Choose " << current.x << "," << current.y + 1 << endl;
             path.emplace_front(current.x, current.y + 1);
             break;
         case DOWN:
-            cout << "Choose " << current.x + 1 << "," << current.y << endl;
+//            cout << "Choose " << current.x + 1 << "," << current.y << endl;
             path.emplace_front(current.x + 1, current.y);
             break;
         }
@@ -636,7 +636,7 @@ seedcup::ActionType FindWayPosition(vector<vector<POSITION>>& map, std::shared_p
     }
     else
     {
-        cout << "pop_back\n";
+//        cout << "pop_back\n";
         path.pop_back();
         current = path.back();
         if (nextStepPosition != nullptr)
@@ -654,6 +654,7 @@ seedcup::ActionType FindWayPosition(vector<vector<POSITION>>& map, std::shared_p
             return seedcup::MOVE_RIGHT;
         else
         {
+            cout << "Error in FindWayPosition" << endl;
             exit(-1);
             return seedcup::SILENT;
         }
