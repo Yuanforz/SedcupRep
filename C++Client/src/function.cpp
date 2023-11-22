@@ -6,6 +6,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <queue>
 #include <deque>
 #include <unordered_map>
 #include <vector>
@@ -44,32 +45,57 @@ public:
         }
         return *this;
     }
+    bool operator==(POINT p)
+    {
+        return (x == p.x) && (y == p.y);
+    }
+    bool operator!=(POINT p)
+    {
+        return (x != p.x) || (y != p.y);
+    }
     int  x;
     int  y;
 };
 
+//class CostPOINT :public POINT
+//{
+//public:
+//    int currentcost;
+//    CostPOINT(int a = 0, int b = 0, int c = 0)
+//    {
+//		x = a;
+//		y = b;
+//		currentcost = c;
+//	}
+//    bool operator < (const CostPOINT& a) const
+//    {
+//        return x < a.x;
+//    }
+//};
+
+
 typedef struct tagPOSITION {
-    int x = -1;
-    int y = -1;
+    POINT pos;
     int dangernum = 0;//n means bomb be placed before n
     bool isBomb = 0;
     bool isRechable = 0;
-    bool isItem = 0;
-    bool isRemovableBlock = 0;
+    POINT* parentPoint = nullptr;
+    int currentCost = -1;
+    //bool isItem = 0;
+    //bool isRemovableBlock = 0;
     //bool AvailableDirection[4] = { 0 };
     //bool isNearable = 0;
-    std::shared_ptr<Area> pArea = NULL;
-
+    //std::shared_ptr<Area> pArea = NULL;
 }POSITION;
 
 void printMap(const GameMsg& msg);
-int SetState(const GameMsg& msg, int prestate, POINT& orientPoint);
 void SpreadBomb(vector<vector<POSITION>>& array, GameMsg& msg, std::shared_ptr<Bomb> bombptr);
 void FindSafeRegion(vector<vector<POSITION>>& array, GameMsg& msg);
 void FindRechableRegion(vector<vector<POSITION>>& array, GameMsg& msg);
+inline int calculateCost(int currentx, int currenty, int targetx, int targety);
+void CalcCostMap(vector<vector<POSITION>>& array, GameMsg& msg);
 POINT FindHiddenPos(vector<vector<POSITION>>& map, std::shared_ptr<seedcup::Player>player);
 inline int HamiltonDist(int x1, int y1, int x2, int y2);
-inline int calculateCost(int currentx, int currenty, int targetx, int targety);
 seedcup::ActionType FindWayPosition(vector<vector<POSITION>>& map, std::shared_ptr<seedcup::Player>player, POINT& target, POINT* nextStepPosition);
 int FindEnemyID(GameMsg& msg);
 inline int calcDistance(vector<vector<POSITION>>& map, GameMsg& msg, int targetx, int targety, int placex, int placey);
@@ -83,11 +109,7 @@ seedcup::ActionType Collection(vector<vector<POSITION>>& map,GameMsg& msg,POINT*
 
 ActionType act(GameMsg& msg, SeedCup& server, int currentNum)
 {
-<<<<<<< HEAD
   //std::cout.setstate(std::ios_base::failbit);
-=======
-    //std::cout.setstate(std::ios_base::failbit);
->>>>>>> b7a2f4ecead917aebb29b9c90029491b3a74f274
     auto& player = msg.players[msg.player_id];
     auto& map = msg.grid;
     printMap(msg);
@@ -96,8 +118,14 @@ ActionType act(GameMsg& msg, SeedCup& server, int currentNum)
     vector<vector<POSITION>> positionmap(msg.grid.size(), vector<POSITION>(msg.grid.size()));
     ActionType returnnum = (ActionType)0;
     //vector<vector<int>> safemap(msg.grid.size(), vector<int>(msg.grid.size(), 0));
+    for(int i=0;i<positionmap.size();i++)
+        for (int j = 0; j < positionmap.size(); j++)
+        {
+            positionmap[i][j].pos = POINT(i, j);
+		}
     FindRechableRegion(positionmap, msg);
     FindSafeRegion(positionmap, msg);//由于实现原理，请放置在findreachableregion函数之后
+    CalcCostMap(positionmap, msg);
     //for (int i = 0; i < msg.grid.size(); i++)
     //{
     //    for (int j = 0; j < msg.grid.size(); j++)
@@ -294,10 +322,6 @@ void printMap(const GameMsg& msg)
     }
 }
 
-int SetState(const GameMsg& msg, int prestate, POINT& orientPoint)
-{
-    return 0;
-}
 
 void SpreadBomb(vector<vector<POSITION>>& array, GameMsg& msg, std::shared_ptr<Bomb> bombptr)
 {
@@ -494,6 +518,51 @@ void FindRechableRegion(vector<vector<POSITION>>& array, GameMsg& msg)
     }
 }
 
+void CalcCostMap(vector<vector<POSITION>>& array, GameMsg& msg)
+{
+    auto &player = msg.players[msg.player_id];
+    std::function<bool(POINT&, POINT&)> cmp =
+        [&array](POINT& a, POINT& b) {return array[a.x][a.y].currentCost > array[b.x][b.y].currentCost; };
+    priority_queue<POINT, std::deque<POINT>, decltype(cmp)> frontier(cmp);
+    frontier.push(POINT(player->x, player->y));
+    array[player->x][player->y].currentCost = 0;
+    vector<vector<bool> > checkedmap(array.size(), std::vector<bool>(array.size(), false));
+    bool findover = false;
+    POINT next;
+    POINT current;
+    int newcost = 0;
+    int i, j = 0;
+    cout << "Enter costcalc"<< endl;
+    while (!frontier.empty())
+    {
+        current = frontier.top();
+        checkedmap[current.x][current.y] = true;
+        frontier.pop();
+        cout << "Enter costcalc while" << current.x << current.y << endl;
+        for (i = -1; i <= 1; i ++)
+        {
+            for (j = -1; j <= 1; j ++)
+            {
+                if (i * j != 0)continue;
+                if (i == 0 && j == 0)continue;
+                next = POINT(current.x + i, current.y + j);
+                if (next.x >= 0 && next.x < array.size() && next.y >= 0 && next.y < array.size()
+                    && array[next.x][next.y].isRechable)
+                {
+                    newcost = array[current.x][current.y].currentCost + calculateCost(current.x, current.y, next.x, next.y);
+                    if (!checkedmap[next.x][next.y] || newcost < array[next.x][next.y].currentCost)//default value is -1
+                    {
+                        array[next.x][next.y].currentCost = newcost;
+                        frontier.push(next);
+                        array[next.x][next.y].parentPoint = &array[current.x][current.y].pos;
+                        cout << "add" << next.x << next.y << endl;
+                    }
+                }
+            }
+        }
+    }
+}
+
 POINT FindHiddenPos(vector<vector<POSITION>>& map, std::shared_ptr<seedcup::Player>player)
 {
     POINT target = POINT(map.size() * 2, map.size() * 2);
@@ -546,92 +615,106 @@ inline int HamiltonDist(int x1,int y1,int x2,int y2)
 
 inline int calculateCost(int currentx, int currenty, int targetx, int targety)
 {//A star Cost Function
-    return abs(currentx - targetx) + abs(currenty - targety) + 1;
+    return abs(currentx - targetx) + abs(currenty - targety);
 }
 
 seedcup::ActionType FindWayPosition(vector<vector<POSITION>>& map, std::shared_ptr<seedcup::Player>player, POINT& target, POINT* nextStepPosition = nullptr)
 {//不建议使用该函数计算距离，因为该函数未来可能会使用其他cost函数，从而对敌人的计算距离不准确
-    POINT current;
+    POINT current = target;
+    POINT playerpos = POINT(player->x, player->y);
     std::deque<POINT> path;
     Direction mincostDirection;
-    int mincost;
-    vector<vector<bool>> checkedmap(map.size(), std::vector<bool>(map.size(), false));
-    path.emplace_front(player->x, player->y);
-//    cout << "Enter Way found\n";
     cout << "target is" << target.x << target.y;
-    while (!path.empty())
+    if (!map[target.x][target.y].isRechable)
     {
-//        cout << "Enter while\n";
-        current = path.front();
-        cout << current.x << current.y;
-        if ((current.x == target.x)
-            && (current.y == target.y))
-            break;
-        checkedmap[current.x][current.y] = true;
-//        cout << "Enter there\n";
-        mincostDirection = NULLD;
-        mincost = calculateCost(0, 0, map.size(), map.size()) + 1;
-        if ((current.x > 0) && (map[current.x - 1][current.y].isRechable) && (!checkedmap[current.x - 1][current.y]))
-        {
-            if (mincost > calculateCost(current.x - 1, current.y, target.x, target.y))
-            {
-                mincost = calculateCost(current.x - 1, current.y, target.x, target.y);
-                mincostDirection = UP;
- //               cout << "1\n";
-            }
-        }
-        if ((current.y > 0) && (map[current.x][current.y - 1].isRechable) && (!checkedmap[current.x][current.y - 1]))
-        {
-            if (mincost > calculateCost(current.x, current.y - 1, target.x, target.y))
-            {
-                mincost = calculateCost(current.x, current.y - 1, target.x, target.y);
-                mincostDirection = LEFT;
- //               cout << "2\n";
-            }
-        }
-        if ((current.x < map.size() - 1) && (map[current.x + 1][current.y].isRechable) && (!checkedmap[current.x + 1][current.y]))
-        {
-            if (mincost > calculateCost(current.x + 1, current.y, target.x, target.y))
-            {
-                mincost = calculateCost(current.x + 1, current.y, target.x, target.y);
-                mincostDirection = DOWN;
- //               cout << "3\n";
-            }
-        }
-        if ((current.y < map.size() - 1) && (map[current.x][current.y + 1].isRechable) && (!checkedmap[current.x][current.y + 1]))
-        {
-            if (mincost > calculateCost(current.x, current.y + 1, target.x, target.y))
-            {
-                mincost = calculateCost(current.x, current.y + 1, target.x, target.y);
-                mincostDirection = RIGHT;
- //               cout << "4\n";
-            }
-        }
-        switch (mincostDirection)
-        {
-        case NULLD:          
- //           cout << "pop_front\n";
-            path.pop_front();
-            continue;
-            break;
-        case LEFT:
-//            cout << "Choose " << current.x << "," << current.y - 1 << endl;
-            path.emplace_front(current.x, current.y - 1);
-            break;
-        case UP:
-//            cout << "Choose " << current.x - 1 << "," << current.y << endl;
-            path.emplace_front(current.x - 1, current.y);
-            break;
-        case RIGHT:
-//            cout << "Choose " << current.x << "," << current.y + 1 << endl;
-            path.emplace_front(current.x, current.y + 1);
-            break;
-        case DOWN:
-//            cout << "Choose " << current.x + 1 << "," << current.y << endl;
-            path.emplace_front(current.x + 1, current.y);
-            break;
-        }
+        if (nextStepPosition != nullptr)
+            *nextStepPosition = playerpos;
+        return seedcup::SILENT;
     }
+    while (current != playerpos)
+    {
+		path.emplace_front(current.x, current.y);
+        if (map[current.x][current.y].parentPoint == nullptr)
+        {
+            cout << "Error in FindWay." << endl;
+            exit(-10);
+        }
+        current = *map[current.x][current.y].parentPoint;
+	}
+    path.emplace_front(playerpos.x, playerpos.y);
+//    while (!path.empty())
+//    {
+////        cout << "Enter while\n";
+//        current = path.front();
+////        cout << current.x << current.y;
+//        if ((current.x == target.x)
+//            && (current.y == target.y))
+//            break;
+//        checkedmap[current.x][current.y] = true;
+////        cout << "Enter there\n";
+//        mincostDirection = NULLD;
+//        mincost = calculateCost(0, 0, map.size(), map.size());
+//        if ((current.x > 0) && (map[current.x - 1][current.y].isRechable) && (!checkedmap[current.x - 1][current.y]))
+//        {
+//            if (mincost > calculateCost(current.x - 1, current.y, target.x, target.y))
+//            {
+//                mincost = calculateCost(current.x - 1, current.y, target.x, target.y);
+//                mincostDirection = UP;
+// //               cout << "1\n";
+//            }
+//        }
+//        if ((current.y > 0) && (map[current.x][current.y - 1].isRechable) && (!checkedmap[current.x][current.y - 1]))
+//        {
+//            if (mincost > calculateCost(current.x, current.y - 1, target.x, target.y))
+//            {
+//                mincost = calculateCost(current.x, current.y - 1, target.x, target.y);
+//                mincostDirection = LEFT;
+// //               cout << "2\n";
+//            }
+//        }
+//        if ((current.x < map.size() - 1) && (map[current.x + 1][current.y].isRechable) && (!checkedmap[current.x + 1][current.y]))
+//        {
+//            if (mincost > calculateCost(current.x + 1, current.y, target.x, target.y))
+//            {
+//                mincost = calculateCost(current.x + 1, current.y, target.x, target.y);
+//                mincostDirection = DOWN;
+// //               cout << "3\n";
+//            }
+//        }
+//        if ((current.y < map.size() - 1) && (map[current.x][current.y + 1].isRechable) && (!checkedmap[current.x][current.y + 1]))
+//        {
+//            if (mincost > calculateCost(current.x, current.y + 1, target.x, target.y))
+//            {
+//                mincost = calculateCost(current.x, current.y + 1, target.x, target.y);
+//                mincostDirection = RIGHT;
+// //               cout << "4\n";
+//            }
+//        }
+//        switch (mincostDirection)
+//        {
+//        case NULLD:          
+// //           cout << "pop_front\n";
+//            path.pop_front();
+//            continue;
+//            break;
+//        case LEFT:
+////            cout << "Choose " << current.x << "," << current.y - 1 << endl;
+//            path.emplace_front(current.x, current.y - 1);
+//            break;
+//        case UP:
+////            cout << "Choose " << current.x - 1 << "," << current.y << endl;
+//            path.emplace_front(current.x - 1, current.y);
+//            break;
+//        case RIGHT:
+////            cout << "Choose " << current.x << "," << current.y + 1 << endl;
+//            path.emplace_front(current.x, current.y + 1);
+//            break;
+//        case DOWN:
+////            cout << "Choose " << current.x + 1 << "," << current.y << endl;
+//            path.emplace_front(current.x + 1, current.y);
+//            break;
+//        }
+//    }
     if (path.size() == 1)
     {
         return seedcup::SILENT;
@@ -640,9 +723,12 @@ seedcup::ActionType FindWayPosition(vector<vector<POSITION>>& map, std::shared_p
     }
     else
     {
+        for(auto& i:path)
+			cout << i.x << i.y;
+		cout << endl;
 //        cout << "pop_back\n";
-        path.pop_back();
-        current = path.back();
+        path.pop_front();
+        current = path.front();
         if (nextStepPosition != nullptr)
         {
             nextStepPosition->x = current.x;
