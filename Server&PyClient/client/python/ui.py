@@ -28,7 +28,8 @@ class Emoji(Enum):
 
     # Items
     Hp = "💖"
-    Speed = "🛼"
+    Speed = "🚄"
+    Gloves = "🧤"
     Bomb = "💣"
     BombNum = "💊"
     Shield = "🔰"
@@ -63,7 +64,9 @@ itemType2Emoji = {
     ItemType.BOMB_RANGE: Emoji.BombRange.emoji,
     ItemType.BOMB_NUM: Emoji.BombNum.emoji,
     ItemType.INVINCIBLE: Emoji.Invencible.emoji,
-    ItemType.SHIELD: Emoji.Shield.emoji
+    ItemType.SHIELD: Emoji.Shield.emoji,
+    ItemType.SPEED: Emoji.Speed.emoji,
+    ItemType.GLOVES: Emoji.Gloves.emoji
 }
 
 class Block(object):

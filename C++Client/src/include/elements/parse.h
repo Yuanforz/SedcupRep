@@ -37,12 +37,14 @@ enum ObjType {
 };
 
 enum ItemType {
-  NULLITEM = 0,
-  BOMB_RANGE,
-  BOMB_NUM,
-  HP,
-  INVENCIBLE,
-  SHIELD,
+    NULLITEM = 0,
+    BOMB_RANGE,
+    BOMB_NUM,
+    HP,
+    INVENCIBLE,
+    SHIELD,
+    SPEED,
+    GLOVES,
 };
 
 struct Player {
@@ -59,6 +61,7 @@ struct Player {
   std::string player_name;
   int score;
   int shield_time;
+  bool has_gloves;
 };
 
 struct Bomb {
@@ -66,6 +69,7 @@ struct Bomb {
   int y;
   int bomb_id;
   int bomb_range;
+  int bomb_status;
   int player_id;
   int last_place_round = -1;
 };
@@ -112,8 +116,8 @@ ParseMap(const std::string &input, int kMapSize) {
   gameMsg->grid.resize(kMapSize, std::vector<Area>(kMapSize));
 
   static std::unordered_map<int, int> oldbombs_placetime;
-  if (!oldbombs_placetime.empty())
-      std::cout << oldbombs_placetime.begin()->second << std::endl;
+  //if (!oldbombs_placetime.empty())
+  //    std::cout << oldbombs_placetime.begin()->second << std::endl;
 
   gameMsg->player_id = jsonData["data"]["player_id"];
   gameMsg->game_round = jsonData["data"]["round"];
@@ -141,6 +145,7 @@ ParseMap(const std::string &input, int kMapSize) {
           player->shield_time = obj["property"]["shield_time"];
           player->speed = obj["property"]["speed"];
           player->player_name = obj["property"]["player_name"];
+          player->has_gloves = obj["property"]["has_gloves"];
           player->x = area.x;
           player->y = area.y;
 
@@ -157,6 +162,7 @@ ParseMap(const std::string &input, int kMapSize) {
           bomb->bomb_id = obj["property"]["bomb_id"];
           bomb->bomb_range = obj["property"]["bomb_range"];
           bomb->player_id = obj["property"]["player_id"];
+          bomb->bomb_status = obj["property"]["bomb_status"];
           if (!oldbombs_placetime.count(bomb->bomb_id))//not existing this bomb
           {
               bomb->last_place_round = gameMsg->game_round - 1;
