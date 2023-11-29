@@ -825,7 +825,10 @@ seedcup::ActionType Attack(vector<vector<POSITION>>& map, GameMsg& msg,int* push
     if(player->has_gloves&&(((player->x==enemy->x)&&(abs(player->y-enemy->y)>player->bomb_range))||((player->y==enemy->y)
 	&&(abs(player->x-enemy->x)>player->bomb_range)))&&pointnow!=point1
 	&&pointnow!=point2&&pointnow!=point3&&pointnow!=point4){
-	*pushnum=1;
+	*pushnum=-1;
+	ActionType returnnum = (ActionType)0;
+	returnnum=RangeAttack(pushnum,msg);
+	if(*pushnum!=0)
 	return PLACED;
 	}
     POINT point = FindSuitableAttackPosition(map, msg);
@@ -840,20 +843,42 @@ seedcup::ActionType Attack(vector<vector<POSITION>>& map, GameMsg& msg,int* push
 seedcup::ActionType RangeAttack(int*pushnum,GameMsg& msg){
 	auto player = msg.players[msg.player_id];
     std::shared_ptr<Player> enemy = msg.players[FindEnemyID(msg)];
-    if(*pushnum==1){
-    	if(enemy->x==player->x&&enemy->y<player->y){
+    if(*pushnum==-1){
+    	if(enemy->x==player->x&&enemy->y<player->y&&msg.grid[player->x][player->y+1].block_id==-1){
+    	*pushnum=1;//2 Attack up
+	    return PLACED;
+	    }
+    	else if(enemy->x==player->x&&enemy->y>player->y&&msg.grid[player->x][player->y-1].block_id==-1){
+    	*pushnum=1;//3 Attack DOWN
+		return PLACED;
+	    } 
+	    else if(enemy->y==player->y&&enemy->x<player->x&&msg.grid[player->x+1][player->y].block_id==-1){
+	    *pushnum=1;//4 Attack LEFT
+	    return PLACED;
+		}
+	    else if(enemy->y==player->y&&enemy->x>player->x&&msg.grid[player->x-1][player->y].block_id==-1){
+	    *pushnum=1;//5 Attack RIGHT
+	    return PLACED;
+		}		
+		else{
+		*pushnum=0;
+		return SILENT;
+		}
+	}
+    else if(*pushnum==1){
+    	if(enemy->x==player->x&&enemy->y<player->y&&msg.grid[player->x][player->y+1].block_id==-1){
     	*pushnum=2;//2 Attack up
 	    return MOVE_DOWN;
 	    }
-    	else if(enemy->x==player->x&&enemy->y>player->y){
+    	else if(enemy->x==player->x&&enemy->y>player->y&&msg.grid[player->x][player->y-1].block_id==-1){
     	*pushnum=3;//3 Attack DOWN
 		return MOVE_UP;
 	    } 
-	    else if(enemy->y==player->y&&enemy->x<player->x){
+	    else if(enemy->y==player->y&&enemy->x<player->x&&msg.grid[player->x+1][player->y].block_id==-1){
 	    *pushnum=4;//4 Attack LEFT
 	    return MOVE_RIGHT;
 		}
-	    else if(enemy->y==player->y&&enemy->x>player->x){
+	    else if(enemy->y==player->y&&enemy->x>player->x&&msg.grid[player->x-1][player->y].block_id==-1){
 	    *pushnum=5;//5 Attack RIGHT
 	    return MOVE_LEFT;
 		}		
