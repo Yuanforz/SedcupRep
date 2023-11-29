@@ -159,6 +159,7 @@ ActionType act(GameMsg& msg, SeedCup& server, int currentNum)
                 count = 0;
             }
             cout << "TRY TO Attack\n";
+            if(pushnum!=0) return returnnum;
         }
         else if(Judgecollectionnecessity(positionmap,msg))
         {
@@ -816,8 +817,14 @@ seedcup::ActionType Attack(vector<vector<POSITION>>& map, GameMsg& msg,int* push
 {
     auto player = msg.players[msg.player_id];
     std::shared_ptr<Player> enemy = msg.players[FindEnemyID(msg)];
-    if(player->has_gloves&&(((player->x==enemy->x)&&(abs(player->y-enemy->y)>player->bomb_range)&&(abs(player->y-enemy->y)<player->bomb_range+3))||((player->y==enemy->y)
-	&&(abs(player->x-enemy->x)>player->bomb_range)&&(abs(player->x-enemy->x)<player->bomb_range+3)))){
+    POINT point1(0,0);
+    POINT point2(0,map.size());
+    POINT point3(map.size(),0);
+    POINT point4(map.size(),map.size());
+    POINT pointnow(player->x,player->y);
+    if(player->has_gloves&&(((player->x==enemy->x)&&(abs(player->y-enemy->y)>player->bomb_range))||((player->y==enemy->y)
+	&&(abs(player->x-enemy->x)>player->bomb_range)))&&pointnow!=point1
+	&&pointnow!=point2&&pointnow!=point3&&pointnow!=point4){
 	*pushnum=1;
 	return PLACED;
 	}
