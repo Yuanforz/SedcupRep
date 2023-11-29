@@ -100,7 +100,8 @@ seedcup::ActionType FindWayPosition(vector<vector<POSITION>>& map, std::shared_p
 int FindEnemyID(GameMsg& msg);
 inline int calcDistance(vector<vector<POSITION>>& map, GameMsg& msg, int targetx, int targety, int placex, int placey);
 POINT FindSuitableAttackPosition(vector<vector<POSITION>>& map, GameMsg& msg);
-seedcup::ActionType Attack(vector<vector<POSITION>>& map, GameMsg& msg, POINT* nextStepPosition);
+seedcup::ActionType Attack(vector<vector<POSITION>>& map, GameMsg& msg,int* pushnum,POINT* nextStepPosition);
+seedcup::ActionType RangeAttack(int*pushnum,GameMsg& msg);
 POINT FindSuitableMinePosition(vector<vector<POSITION>>& map, GameMsg& msg);
 seedcup::ActionType Mine(vector<vector<POSITION>>& map, GameMsg& msg, POINT* nextStepPosition);
 int Judgecollectionnecessity(vector<vector<POSITION>>& map,GameMsg& msg);
@@ -137,12 +138,19 @@ ActionType act(GameMsg& msg, SeedCup& server, int currentNum)
     POINT nextStepPosition;
     static int prestate = 0;//1 Attack 2 Mine collect 3 Run away 
     static int count = 0;//counting
-    if (positionmap[player->x][player->y].dangernum == 0)
+    static int pushnum=0;
+    if (positionmap[player->x][player->y].dangernum == 0||pushnum!=0)
     {
+    	if(pushnum!=0){
+    		cout<<"Try to RangeAttack";
+    		returnnum=RangeAttack(&pushnum,msg);
+    		cout << "pushnum is" << pushnum<<endl;
+    		return returnnum;
+		}
         if (positionmap[msg.players[FindEnemyID(msg)]->x][msg.players[FindEnemyID(msg)]->y].isRechable
             && (msg.players[FindEnemyID(msg)]->invincible_time == 0))
         {
-            returnnum = Attack(positionmap, msg, &nextStepPosition);
+            returnnum = Attack(positionmap, msg,&pushnum,&nextStepPosition);
             if (prestate == 1)
                 count++;
             else
@@ -258,6 +266,7 @@ ActionType act(GameMsg& msg, SeedCup& server, int currentNum)
         break;
     }
     cout << "count is" << count<<endl;
+    cout << "pushnum is" << pushnum<<endl;
     // 璁剧疆闅忔満鎿嶄綔
     return returnnum;
 }
@@ -803,9 +812,15 @@ POINT FindSuitableAttackPosition(vector<vector<POSITION>>& map, GameMsg& msg)
     return POINT(enemy->x, enemy->y);
 }
 
-seedcup::ActionType Attack(vector<vector<POSITION>>& map, GameMsg& msg, POINT* nextStepPosition = nullptr)
+seedcup::ActionType Attack(vector<vector<POSITION>>& map, GameMsg& msg,int* pushnum, POINT* nextStepPosition = nullptr)
 {
     auto player = msg.players[msg.player_id];
+    std::shared_ptr<Player> enemy = msg.players[FindEnemyID(msg)];
+    if(player->has_gloves&&(((player->x==enemy->x)&&(abs(player->y-enemy->y)>player->bomb_range)&&(abs(player->y-enemy->y)<player->bomb_range+3))||((player->y==enemy->y)
+	&&(abs(player->x-enemy->x)>player->bomb_range)&&(abs(player->x-enemy->x)<player->bomb_range+3)))){
+	*pushnum=1;
+	return PLACED;
+	}
     POINT point = FindSuitableAttackPosition(map, msg);
     seedcup::ActionType action = FindWayPosition(map, msg.players[msg.player_id], point, nextStepPosition);
     if ((msg.grid[player->x][player->y].bomb_id == -1) && (player->bomb_now_num < player->bomb_max_num) &&
@@ -815,7 +830,51 @@ seedcup::ActionType Attack(vector<vector<POSITION>>& map, GameMsg& msg, POINT* n
     }
     return action;
 }
-
+seedcup::ActionType RangeAttack(int*pushnum,GameMsg& msg){
+	auto player = msg.players[msg.player_id];
+    std::shared_ptr<Player> enemy = msg.players[FindEnemyID(msg)];
+    if(*pushnum==1){
+    	if(enemy->x==player->x&&enemy->y<player->y){
+    	*pushnum=2;//2 Attack up
+	    return MOVE_DOWN;
+	    }
+    	else if(enemy->x==player->x&&enemy->y>player->y){
+    	*pushnum=3;//3 Attack DOWN
+		return MOVE_UP;
+	    } 
+	    else if(enemy->y==player->y&&enemy->x<player->x){
+	    *pushnum=4;//4 Attack LEFT
+	    return MOVE_RIGHT;
+		}
+	    else if(enemy->y==player->y&&enemy->x>player->x){
+	    *pushnum=5;//5 Attack RIGHT
+	    return MOVE_LEFT;
+		}		
+		else{
+		*pushnum=0;
+		return SILENT;
+		}
+	}
+	if(*pushnum>1){
+		if(*pushnum==2){
+		*pushnum=0;
+		return MOVE_UP;
+		}
+		if(*pushnum==3){
+		*pushnum=0;
+		return MOVE_DOWN;
+		}
+		if(*pushnum==4){
+		*pushnum=0;
+		return MOVE_LEFT;
+		}
+		if(*pushnum==5){
+		*pushnum=0;
+		return MOVE_RIGHT;
+		}
+	}
+	return SILENT;
+}
 inline int calcDistance(vector<vector<POSITION>>& map, GameMsg& msg, int targetx, int targety, int placex, int placey)
 {
     return abs(targetx - placex) + abs(targety - placey);
