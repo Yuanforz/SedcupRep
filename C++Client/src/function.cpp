@@ -63,6 +63,7 @@ typedef struct tagPOSITION {
     bool isBomb = 0;
     bool isRechable = 0;
     POINT* parentPoint = nullptr;
+    int minstep = -1;//minstep means the min step to the current position (didn't consider round i.e. speed)
     int currentCost = -1;
     //bool isItem = 0;
     //bool isRemovableBlock = 0;
@@ -91,7 +92,7 @@ int Judgecollectionnecessity(vector<vector<POSITION>>& map,GameMsg& msg);
 POINT FindSuitableCollectionPosition(vector<vector<POSITION>>& map, GameMsg& msg);
 seedcup::ActionType Collection(vector<vector<POSITION>>& map,GameMsg& msg,POINT* nextStepPosition);
 seedcup::ActionType MakeDecision(vector<vector<POSITION>>& map, GameMsg& msg, int currentNum);
-bool IsSafeIfPlaceBomb(vector<vector<POSITION>>& map, GameMsg& msg, POINT& target, bool renew);
+bool IsSafeIfPlaceBomb(vector<vector<POSITION>>& map, GameMsg& msg, POINT& target, int currentNum, bool renew);
 
 
 ActionType act(GameMsg& msg, SeedCup& server, int currentNum)
@@ -109,7 +110,13 @@ ActionType act(GameMsg& msg, SeedCup& server, int currentNum)
     FindRechableRegion(positionmap, msg);
     FindSafeRegion(positionmap, msg);//由于实现原理，请放置在findreachableregion函数之后
     CalcCostMap(positionmap, msg);
-
+    for (int i = 0; i < positionmap.size(); i++)
+        for (int j = 0; j < positionmap.size(); j++)
+        {
+            printf("%2d", positionmap[i][j].minstep);
+			if (j == positionmap.size() - 1)
+				cout << endl;
+		}
     ActionType returnnum= MakeDecision(positionmap, msg, currentNum);
     switch (returnnum)
     {
@@ -252,8 +259,8 @@ seedcup::ActionType MakeDecision(vector<vector<POSITION>>& positionmap, GameMsg&
     if (count > 20)
         returnnum = PLACED;
 
-    if(returnnum==PLACED)
-		if (IsSafeIfPlaceBomb(positionmap, msg, playerpos, true))
+    if (returnnum == PLACED)
+        if (IsSafeIfPlaceBomb(positionmap, msg, playerpos, true, currentNum))
 			returnnum = PLACED;
         else
         {
@@ -537,11 +544,13 @@ void CalcCostMap(vector<vector<POSITION>>& array, GameMsg& msg)
     priority_queue<POINT, std::deque<POINT>, decltype(cmp)> frontier(cmp);
     frontier.push(POINT(player->x, player->y));
     array[player->x][player->y].currentCost = 0;
+    array[player->x][player->y].minstep = 0;
     vector<vector<bool> > checkedmap(array.size(), std::vector<bool>(array.size(), false));
     bool findover = false;
     POINT next;
     POINT current;
     int newcost = 0;
+    int currentstep = 0;
     int i, j = 0;
     //cout << "Enter costcalc"<< endl;
     while (!frontier.empty())
@@ -561,8 +570,10 @@ void CalcCostMap(vector<vector<POSITION>>& array, GameMsg& msg)
                     && array[next.x][next.y].isRechable)
                 {
                     newcost = array[current.x][current.y].currentCost + calculateCost(array,msg,current.x, current.y, next.x, next.y);
+                    currentstep = array[current.x][current.y].minstep + 1;
                     if (!checkedmap[next.x][next.y] || newcost < array[next.x][next.y].currentCost)//default value is -1
                     {
+                        array[next.x][next.y].minstep = currentstep;
                         array[next.x][next.y].currentCost = newcost;
                         frontier.push(next);
                         array[next.x][next.y].parentPoint = &array[current.x][current.y].pos;
@@ -789,13 +800,14 @@ seedcup::ActionType Attack(vector<vector<POSITION>>& map, GameMsg& msg,int*pushn
     auto player = msg.players[msg.player_id];
     std::shared_ptr<Player> enemy = msg.players[FindEnemyID(msg)];
     POINT point1(0, 0);
-    POINT point2(0, map.size());
-    POINT point3(map.size(), 0);
-    POINT point4(map.size(), map.size());
+    POINT point2(0, map.size()-1);
+    POINT point3(map.size()-1, 0);
+    POINT point4(map.size()-1, map.size()-1);
     POINT pointnow(player->x, player->y);
     if (player->has_gloves && (((player->x == enemy->x) && (abs(player->y - enemy->y) > player->bomb_range)) || ((player->y == enemy->y)
         && (abs(player->x - enemy->x) > player->bomb_range))) && pointnow != point1
-        && pointnow != point2 && pointnow != point3 && pointnow != point4) {
+        && pointnow != point2 && pointnow != point3 && pointnow != point4) 
+    {
         *pushnum = -1;
         ActionType returnnum = (ActionType)0;
         returnnum = RangeAttack(pushnum, msg);
@@ -1038,7 +1050,7 @@ seedcup::ActionType Collection(vector<vector<POSITION>>& map,GameMsg& msg,POINT*
 }
 
 //Virtual Bomb id start by -50
-bool IsSafeIfPlaceBomb(vector<vector<POSITION>>& map, GameMsg& msg, POINT& target, bool renew = false)
+bool IsSafeIfPlaceBomb(vector<vector<POSITION>>& map, GameMsg& msg, POINT& target, int currentNum, bool renew = false)
 {//Attention: may change msg value in this function tempory
     static int count = 0;
     if (renew)
@@ -1069,17 +1081,23 @@ bool IsSafeIfPlaceBomb(vector<vector<POSITION>>& map, GameMsg& msg, POINT& targe
 
         FindRechableRegion(map, msg);
         FindSafeRegion(map, msg);//由于实现原理，请放置在findreachableregion函数之后
+        CalcCostMap(map, msg);
         for(int i=0;i<map.size();i++)
 		    for(int j=0;j<map.size();j++)
                 if (map[i][j].isRechable && (!map[i][j].dangernum))
                 {
-				    msg.grid[player->x][player->y].bomb_id = -1;
-				    msg.bombs.erase(-50 + count);
-				    player->bomb_now_num--;
-
-                    FindRechableRegion(map, msg);
-                    FindSafeRegion(map, msg);//由于实现原理，请放置在findreachableregion函数之后
-				    return true;
+                    if (map[i][j].minstep <= player->speed * 3 - currentNum)
+                    {
+                        msg.grid[player->x][player->y].bomb_id = -1;
+                        msg.bombs.erase(-50 + count);
+                        player->bomb_now_num--;
+                        FindRechableRegion(map, msg);
+                        FindSafeRegion(map, msg);//由于实现原理，请放置在findreachableregion函数之后
+                        CalcCostMap(map, msg);
+                        return true;
+                    }
+                    else
+                        continue;
 			    }
 		msg.grid[player->x][player->y].bomb_id = -1;
 		msg.bombs.erase(-50 + count);
@@ -1087,6 +1105,7 @@ bool IsSafeIfPlaceBomb(vector<vector<POSITION>>& map, GameMsg& msg, POINT& targe
 		return false;
         FindRechableRegion(map, msg);
         FindSafeRegion(map, msg);//由于实现原理，请放置在findreachableregion函数之后
+        CalcCostMap(map, msg);
     }
     return false;
 }
