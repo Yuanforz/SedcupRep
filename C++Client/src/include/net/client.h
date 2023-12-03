@@ -79,7 +79,10 @@ public:
   }
   static inline int receiveSocket(int fd, void *buffer, size_t len,
                                   int flag = 0) {
-    return recv(fd, (char *)buffer, len, flag);
+      int result=recv(fd, (char*)buffer, len, flag);
+      int count = 1;
+      setsockopt(fd, IPPROTO_TCP, TCP_QUICKACK, (char*)&count, sizeof(int));
+    return result;
   }
   static int recvSockBorder(int fd, std::string &buffer, const char *border,
                             int flag = 0) {
@@ -150,7 +153,11 @@ public:
     return send(fd, (char *)buffer, len, flag);
   }
   static inline int tryConnect(int fd, const sockaddr *addr, socklen_t len) {
+      int flag = 1;
+      setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (char*) & flag, sizeof(flag));
+      //setSockReadSize(fd, 1024 * 1024);
     auto ret = connect(fd, addr, len);
+    setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
     return ret;
   }
   static inline int bindSocket(int fd, const sockaddr *addr, socklen_t len) {

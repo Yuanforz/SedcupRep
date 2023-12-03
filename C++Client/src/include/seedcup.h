@@ -14,6 +14,8 @@
 #include <utility>
 #include <vector>
 
+#include <sys/time.h>
+
 namespace seedcup {
 
     class SeedCup;
@@ -53,11 +55,22 @@ namespace seedcup {
             std::vector<int> winners;
 
             while (isContinue && recvData(data) >= 0) {
+
+                struct timeval t1, t2;
+                gettimeofday(&t1, NULL);
                 auto packet_type = ParsePacket(data);
+                gettimeofday(&t2, NULL);
+                printf("timeParsePacket:%ld\n", (t2.tv_sec - t1.tv_sec) * 1000000 + t2.tv_usec - t1.tv_usec);
+
                 std::pair<bool, std::shared_ptr<GameMsg>> action_result;
                 switch (packet_type) {
                 case ACTIONRESP:
+
+                    gettimeofday(&t1, NULL);
                     action_result = ParseMap(data, kMapSize);
+                    gettimeofday(&t2, NULL);
+                    printf("timeParseMap:%ld\n", (t2.tv_sec - t1.tv_sec) * 1000000 + t2.tv_usec - t1.tv_usec);
+
                     if (!action_result.first) {
                         last_error_ = "parse map wrong";
                         isContinue = false;
@@ -65,7 +78,12 @@ namespace seedcup {
                     else {
                         this->player_id_ = action_result.second->player_id;
                         if (map_call_back_ != nullptr) {
+
+                            gettimeofday(&t1, NULL);
                             auto ret = map_call_back_(*action_result.second, *this);
+                            gettimeofday(&t2, NULL);
+                            printf("timeMapCallBack:%ld\n", (t2.tv_sec - t1.tv_sec) * 1000000 + t2.tv_usec - t1.tv_usec);
+
                             if (ret != 0) {
                                 last_error_ = "ret not zero " + std::to_string(ret);
                                 isContinue = false;
@@ -119,6 +137,9 @@ namespace seedcup {
 
     private:
         int sendData(const std::string& data) {
+            struct timeval t1, t2;
+            gettimeofday(&t1, NULL);
+
             uint64_t size = data.size();
             char buff[sizeof(size) + data.size()];
             memcpy(buff, &size, sizeof(size));
@@ -129,12 +150,19 @@ namespace seedcup {
                     " errno:" + std::to_string(errno);
                 return ret;
             }
+
+            gettimeofday(&t2, NULL);
+            printf("sendData:%ld\n", (t2.tv_sec - t1.tv_sec) * 1000000 + t2.tv_usec - t1.tv_usec);
             return 0;
         }
 
         int recvData(std::string& data) {
             uint64_t size = 0;
             auto ret = client_.receiveHost(&size, 8);
+
+            struct timeval t1, t2;
+            gettimeofday(&t1, NULL);
+
             if (ret <= 0) {
                 this->last_error_ = "recv host len wrong " + std::to_string(ret);
                 return -1;
@@ -146,6 +174,7 @@ namespace seedcup {
             }
 
             char* buffer = new char[size];
+            printf("size:%ld\n", size);
 
             int bytesReceived = 0;
             while (bytesReceived < size) {
@@ -158,13 +187,17 @@ namespace seedcup {
                     return -1;
                 }
                 bytesReceived += ret;
+                printf("bytesReceived:%d\n", bytesReceived);
             }
-
+            gettimeofday(&t2, NULL);
+            printf("recvDataWithnoSave:%ld\n", (t2.tv_sec - t1.tv_sec) * 1000000 + t2.tv_usec - t1.tv_usec);
             // 将接收到的数据存储到 std::string 对象中
             data.assign(buffer, size);
 
             delete[] buffer;
 
+            gettimeofday(&t2, NULL);
+            printf("recvData:%ld\n", (t2.tv_sec - t1.tv_sec) * 1000000 + t2.tv_usec - t1.tv_usec);
             return 0; // 返回成功
         }
 
