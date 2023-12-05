@@ -17,7 +17,7 @@ using namespace seedcup;
 #include <stdio.h>
 #include <unistd.h>
 
-const int CollectRange = 5;
+const int CollectStepMax = 15;
 
 enum Direction
 {
@@ -63,7 +63,7 @@ typedef struct tagPOSITION {
     bool isBomb = 0;
     bool isRechable = 0;
     POINT* parentPoint = nullptr;
-    int minstep = -1;//minstep means the min step to the current position (didn't consider round i.e. speed)
+    int minstep = 1000;//minstep means the min step to the current position (didn't consider round i.e. speed)
     int currentCost = -1;
     //bool isItem = 0;
     //bool isRemovableBlock = 0;
@@ -89,6 +89,7 @@ seedcup::ActionType RangeAttack(int* pushnum, GameMsg& msg);
 POINT FindSuitableMinePosition(vector<vector<POSITION>>& map, GameMsg& msg);
 seedcup::ActionType Mine(vector<vector<POSITION>>& map, GameMsg& msg, POINT* nextStepPosition);
 int Judgecollectionnecessity(vector<vector<POSITION>>& map,GameMsg& msg);
+int JudgeStrictCollectionnecessity(vector<vector<POSITION>>& map, GameMsg& msg);
 POINT FindSuitableCollectionPosition(vector<vector<POSITION>>& map, GameMsg& msg);
 seedcup::ActionType Collection(vector<vector<POSITION>>& map,GameMsg& msg,POINT* nextStepPosition);
 seedcup::ActionType MakeDecision(vector<vector<POSITION>>& map, GameMsg& msg, int currentNum);
@@ -110,13 +111,7 @@ ActionType act(GameMsg& msg, SeedCup& server, int currentNum)
     FindRechableRegion(positionmap, msg);
     FindSafeRegion(positionmap, msg);//由于实现原理，请放置在findreachableregion函数之后
     CalcCostMap(positionmap, msg);
-    for (int i = 0; i < positionmap.size(); i++)
-        for (int j = 0; j < positionmap.size(); j++)
-        {
-            printf("%2d", positionmap[i][j].minstep);
-			if (j == positionmap.size() - 1)
-				cout << endl;
-		}
+
     ActionType returnnum= MakeDecision(positionmap, msg, currentNum);
     switch (returnnum)
     {
@@ -144,18 +139,87 @@ seedcup::ActionType MakeDecision(vector<vector<POSITION>>& positionmap, GameMsg&
     static int prestate = 0;//1 Attack 2 Mine 3 Run away 4 collect
     static int count = 0;//counting
     static int pushnum = 0;
-    if (positionmap[player->x][player->y].dangernum <= 2||pushnum!=0)
+    bool token = 1;
+    //if (positionmap[player->x][player->y].dangernum <= 2||pushnum!=0)
+    //{
+    //    if (pushnum != 0) {
+    //        std::cout << "Try to RangeAttack";
+    //        returnnum = RangeAttack(&pushnum, msg);
+    //        std::cout << "pushnum is" << pushnum << endl;
+    //        return returnnum;
+    //    }
+    //    if (positionmap[msg.players[FindEnemyID(msg)]->x][msg.players[FindEnemyID(msg)]->y].isRechable
+    //        && (msg.players[FindEnemyID(msg)]->invincible_time == 0)
+    //        &&(!JudgeStrictCollectionnecessity(positionmap, msg)))
+    //    {
+    //        returnnum = Attack(positionmap, msg,&pushnum, &nextStepPosition);
+    //        if (prestate == 1)
+    //            count++;
+    //        else
+    //        {
+    //            prestate = 1;
+    //            count = 0;
+    //        }
+    //        std::cout << "TRY TO Attack\n";
+    //        if (pushnum != 0)return returnnum;
+    //    }
+    //    else if (Judgecollectionnecessity(positionmap, msg))
+    //    {
+    //        returnnum = Collection(positionmap, msg, &nextStepPosition);
+    //        if (prestate == 4)
+    //            count++;
+    //        else
+    //        {
+    //            prestate = 4;
+    //            count = 0;
+    //        }
+    //        cout << "TRY TO Collect\n";
+    //        cout << "Collect at" << nextStepPosition.x << " " << nextStepPosition.y << endl;
+    //    }
+    //    else if (player->bomb_now_num < player->bomb_max_num)
+    //    {
+    //        returnnum = Mine(positionmap, msg, &nextStepPosition);
+    //        if (prestate == 2)
+    //            count++;
+    //        else
+    //        {
+    //            prestate = 2;
+    //            count = 0;
+    //        }
+    //        cout << "TRY TO Mine\n";
+    //        cout << "Mine at" << nextStepPosition.x << " " << nextStepPosition.y << endl;
+    //    }
+    //    else
+    //    {
+    //        cout << "TRY TO MOVE\n";
+    //        POINT hiddenPosition = FindHiddenPos(positionmap, player);
+    //        if (prestate == 3)
+    //            count++;
+    //        else
+    //        {
+    //            prestate = 3;
+    //            count = 0;
+    //        }
+    //        if (hiddenPosition.x < 0)
+    //        {
+    //            cout << "Sorry,point error\n";
+    //            returnnum = SILENT;
+    //        }
+    //        else
+    //        {
+    //            returnnum = FindWayPosition(positionmap, player, hiddenPosition, &nextStepPosition);
+    //            if (positionmap[nextStepPosition.x][nextStepPosition.y].dangernum >= 3)
+    //                returnnum = SILENT;
+    //        }
+    //    }
+    if (positionmap[player->x][player->y].dangernum <= 2)
     {
-        if (pushnum != 0) {
-            std::cout << "Try to RangeAttack";
-            returnnum = RangeAttack(&pushnum, msg);
-            std::cout << "pushnum is" << pushnum << endl;
-            return returnnum;
-        }
         if (positionmap[msg.players[FindEnemyID(msg)]->x][msg.players[FindEnemyID(msg)]->y].isRechable
-            && (msg.players[FindEnemyID(msg)]->invincible_time == 0))
+            && (msg.players[FindEnemyID(msg)]->invincible_time == 0)
+            && (!JudgeStrictCollectionnecessity(positionmap, msg)))
         {
-            returnnum = Attack(positionmap, msg,&pushnum, &nextStepPosition);
+            returnnum = Attack(positionmap, msg, &pushnum, &nextStepPosition);
+            token = 0;
             if (prestate == 1)
                 count++;
             else
@@ -164,35 +228,53 @@ seedcup::ActionType MakeDecision(vector<vector<POSITION>>& positionmap, GameMsg&
                 count = 0;
             }
             std::cout << "TRY TO Attack\n";
-            if (pushnum != 0)return returnnum;
+            //if (pushnum != 0)return returnnum;
         }
         else if (Judgecollectionnecessity(positionmap, msg))
         {
             returnnum = Collection(positionmap, msg, &nextStepPosition);
-            if (prestate == 4)
-                count++;
+            if (returnnum == SILENT)//Invalid
+            {
+                cout << "TRY TO Collect but FAILED\n";
+                token = 1;
+            }
             else
             {
-                prestate = 4;
-                count = 0;
+                token = 0;
+                if (prestate == 4)
+                    count++;
+                else
+                {
+                    prestate = 4;
+                    count = 0;
+                }
+                cout << "TRY TO Collect\n";
+                cout << "Collect at" << nextStepPosition.x << " " << nextStepPosition.y << endl;
             }
-            cout << "TRY TO Collect\n";
-            cout << "Collect at" << nextStepPosition.x << " " << nextStepPosition.y << endl;
         }
-        else if (player->bomb_now_num < player->bomb_max_num)
+        if ((player->bomb_now_num < player->bomb_max_num) && token)
         {
             returnnum = Mine(positionmap, msg, &nextStepPosition);
-            if (prestate == 2)
-                count++;
+            if (returnnum == SILENT)//Invalid
+            {
+                cout << "TRY TO Mine but FAILED\n";
+                token = 1;
+            }
             else
             {
-                prestate = 2;
-                count = 0;
+                token = 0;
+                if (prestate == 2)
+                    count++;
+                else
+                {
+                    prestate = 2;
+                    count = 0;
+                }
+                cout << "TRY TO Mine\n";
+                cout << "Mine at" << nextStepPosition.x << " " << nextStepPosition.y << endl;
             }
-            cout << "TRY TO Mine\n";
-            cout << "Mine at" << nextStepPosition.x << " " << nextStepPosition.y << endl;
         }
-        else
+        if(token)
         {
             cout << "TRY TO MOVE\n";
             POINT hiddenPosition = FindHiddenPos(positionmap, player);
@@ -251,12 +333,15 @@ seedcup::ActionType MakeDecision(vector<vector<POSITION>>& positionmap, GameMsg&
         else
         {
             returnnum = FindWayPosition(positionmap, player, hiddenPosition, &nextStepPosition);
+            if ((positionmap[nextStepPosition.x][nextStepPosition.y].dangernum >= 6)
+                && (positionmap[nextStepPosition.x][nextStepPosition.y].dangernum > positionmap[player->x][player->y].dangernum))
+                returnnum = SILENT;
             //if (positionmap[nextStepPosition.x][nextStepPsition.y].dangernum > positionmap[player->x][player->y].dangernum)
             //    returnnum = SILENT;
         }
     }
 
-    if (count > 20)
+    if (count > 40)
         returnnum = PLACED;
 
     if (returnnum == PLACED)
@@ -278,10 +363,27 @@ void printMap(const GameMsg& msg)
 {
     printf("\x1b[H\x1b[2J");
     // 打印自己的id
-    std::cout << "self:" << msg.player_id << std::endl;
+    std::cout << "selfID:" << msg.player_id<<std::endl;
+    std::cout << "HP:" << msg.players.find(msg.player_id)->second->hp;
+    std::cout << "\t\t";
+    std::cout << "BombNum:" << msg.players.find(msg.player_id)->second->bomb_now_num
+        <<"/"<< msg.players.find(msg.player_id)->second->bomb_max_num;
+    std::cout << "\t\t";
+    std::cout << "BombRange:" << msg.players.find(msg.player_id)->second->bomb_range;
+    std::cout << "\t\t";
+    std::cout << "Speed:" << msg.players.find(msg.player_id)->second->speed;
+    std::cout << std::endl;
+    std::cout << ((msg.players.find(msg.player_id)->second->invincible_time>0)?"Invince!   ":"Not invince");
+    std::cout << "\t\t";
+    std::cout << (msg.players.find(msg.player_id)->second->has_gloves ? "Has Glove" : "No glove");
+    std::cout << std::endl;
+    std::cout << "X:" << msg.players.find(msg.player_id)->second->x;
+    std::cout << "\t\t";
+    std::cout << "Y:" << msg.players.find(msg.player_id)->second->y;
+    std::cout << std::endl;
+
     // 打印地图
     //cout << endl << endl;
-    printf("\n\n");
     auto& grid = msg.grid;
     for (int i = 0; i < msg.grid.size(); i++) {
         for (int j = 0; j < msg.grid.size(); j++) {
@@ -312,7 +414,7 @@ void printMap(const GameMsg& msg)
                 case seedcup::BOMB_RANGE:
                     cout << "🧪";
                     break;
-                case seedcup::INVENCIBLE:
+                case seedcup::INVINCIBLE:
                     cout << "🗽";
                     break;
                 case seedcup::SHIELD:
@@ -498,6 +600,7 @@ void FindRechableRegion(vector<vector<POSITION>>& array, GameMsg& msg)
     POINT target;
     std::deque<POINT> waitedarr;
     vector<vector<bool>> checkedmap(map.size(), std::vector<bool>(map.size()));
+    bool findEnemyInvincible = false;
 
     waitedarr.emplace_front(msg.players[msg.player_id]->x, msg.players[msg.player_id]->y);
     target.x = msg.players[msg.player_id]->x;
@@ -520,6 +623,26 @@ void FindRechableRegion(vector<vector<POSITION>>& array, GameMsg& msg)
         {
             array[target.x][target.y].isRechable = false;
             continue;
+        }
+        else if (!map[target.x][target.y].player_ids.empty())
+        {
+            findEnemyInvincible = false;
+            for (auto& it : map[target.x][target.y].player_ids)
+                if ((it != msg.player_id) && (msg.players[it]->invincible_time > 0))
+				{
+                    findEnemyInvincible = true;
+					break;
+				}
+            if (findEnemyInvincible)
+            {
+                array[target.x][target.y].isRechable = false;
+				continue;
+            }
+            else
+            {
+				array[target.x][target.y].isRechable = true;
+			}
+            
         }
         else
         {
@@ -670,7 +793,7 @@ inline int calculateCost(vector<vector<POSITION>>& array, GameMsg& msg, int curr
  //       case ItemType::HP:
  //           itemcost = -100;
  //           break;
- //       case ItemType::INVENCIBLE:
+ //       case ItemType::INVINCIBLE:
  //           itemcost = -100;
  //           break;
  //       case ItemType::SHIELD:
@@ -680,7 +803,12 @@ inline int calculateCost(vector<vector<POSITION>>& array, GameMsg& msg, int curr
  //   int finalcost = dangerCost + enemycost + itemcost + (abs(currentx - targetx) + abs(currenty - targety)) * 2;
 
  //   return finalcost > 0 ? finalcost : 0;
-    return 1;
+    if (array[targetx][targety].dangernum > 4)
+        return 3;
+    else if (array[targetx][targety].dangernum > 0)
+        return 2;
+	else
+		return 1;
 }
 
 seedcup::ActionType FindWayPosition(vector<vector<POSITION>>& map, std::shared_ptr<seedcup::Player>player, POINT& target, POINT* nextStepPosition = nullptr)
@@ -792,7 +920,25 @@ POINT FindSuitableAttackPosition(vector<vector<POSITION>>& map, GameMsg& msg)
     std::shared_ptr<Player> enemy = msg.players[FindEnemyID(msg)];
     if (enemy == NULL)
         return POINT(-1, -1);
-    return POINT(enemy->x, enemy->y);
+
+    int minsteparr[5] = {100,100,100,100,100};//up,left,center(not use),right,down (CONSIDER THAT: need to add center or not?)
+
+    for (int i = -1; i <= 1; i++)
+        for (int j = -1; j <= 1; j++)
+        {
+			if (i * j != 0)continue;
+			if (i == 0 && j == 0)continue;
+            if ((enemy->x + i >= 0) && (enemy->x + i < map.size()) && (enemy->y + j >= 0) && (enemy->y + j < map.size()))
+                if (map[enemy->x + i][enemy->y + j].isRechable)
+                    minsteparr[i * 2 + j + 2] = map[enemy->x + i][enemy->y + j].minstep;
+		}
+    //minsteparr[2] = 100;
+
+    int minway = 0;
+    for (int i = 1; i < 5; i++)
+        if ((minsteparr[i] < minsteparr[minway]) && (minsteparr[i] != -1) || (minsteparr[minway] == -1))
+			minway = i;
+    return POINT(enemy->x + (minway % 2 == 0 ? (minway - 2) / 2 : 0), enemy->y + (minway % 2 == 1 ? (minway - 2) : 0));
 }
 
 seedcup::ActionType Attack(vector<vector<POSITION>>& map, GameMsg& msg,int*pushnum, POINT* nextStepPosition = nullptr)
@@ -817,7 +963,7 @@ seedcup::ActionType Attack(vector<vector<POSITION>>& map, GameMsg& msg,int*pushn
     POINT point = FindSuitableAttackPosition(map, msg);
     seedcup::ActionType action = FindWayPosition(map, msg.players[msg.player_id], point, nextStepPosition);
     if ((msg.grid[player->x][player->y].bomb_id == -1) && (player->bomb_now_num < player->bomb_max_num) &&
-        (action == SILENT))
+        ((point.x == player->x) && (point.y == player->y)))
     {
         action = PLACED;
     }
@@ -903,45 +1049,50 @@ seedcup::ActionType RangeAttack(int* pushnum, GameMsg& msg) {
 }
 
 
-inline int calcDistance(vector<vector<POSITION>>& map, GameMsg& msg, int targetx, int targety, int placex, int placey)
-{
-    return abs(targetx - placex) + abs(targety - placey);
-}
+//inline int calcDistance(vector<vector<POSITION>>& map, GameMsg& msg, int targetx, int targety, int placex, int placey)
+//{
+//    return abs(targetx - placex) + abs(targety - placey);
+//}
 
 POINT FindSuitableMinePosition(vector<vector<POSITION>>& map, GameMsg& msg)
 {
     auto player = msg.players[msg.player_id];
     POINT target(map.size() * 2, map.size() * 2);
+    bool flag = 0;
     for (int i = 0; i < map.size(); i++)
         for (int j = 0; j < map.size(); j++)
         {
-            if ((msg.grid[i][j].block_id != -1) && (msg.blocks[msg.grid[i][j].block_id]->removable))
+            if ((msg.grid[i][j].block_id != -1) && (msg.blocks[msg.grid[i][j].block_id]->removable) && (map[i][j].dangernum == 0))
             {
-                if ((i > 0) && map[i - 1][j].isRechable && (!map[i - 1][j].dangernum) &&
-                    (calcDistance(map,msg,target.x,target.y,player->x,player->y)
-                        > calcDistance(map, msg, i-1, j,player->x, player->y)))
+                if (target.x == map.size() * 2)
                 {
+                    flag = 1;
+                }
+                if ((i > 0) && map[i - 1][j].isRechable && (!map[i - 1][j].dangernum) &&
+                    (flag||map[target.x][target.y].minstep > map[i - 1][j].minstep))
+                {
+                    flag = 0;
                     target.x = i - 1;
                     target.y = j;
                 }
                 if ((j > 0) && map[i][j - 1].isRechable && (!map[i][j - 1].dangernum) &&
-                    (calcDistance(map, msg, target.x, target.y, player->x, player->y)
-                        > calcDistance(map, msg, i, j - 1, player->x, player->y)))
+                    (flag || map[target.x][target.y].minstep > map[i][j - 1].minstep))
                 {
+                    flag = 0;
                     target.x = i;
                     target.y = j - 1;
                 }
                 if ((i < map.size() - 1) && map[i + 1][j].isRechable && (!map[i + 1][j].dangernum) &&
-                    (calcDistance(map, msg, target.x, target.y,player->x, player->y)
-                > calcDistance(map, msg, i + 1, j, player->x, player->y)))
+                    (flag || map[target.x][target.y].minstep > map[i + 1][j].minstep))
                 {
+                    flag = 0;
                     target.x = i + 1;
                     target.y = j;
                 }
                 if ((j < map.size() - 1) && map[i][j + 1].isRechable && (!map[i][j + 1].dangernum) &&
-                    (calcDistance(map, msg, target.x, target.y, player->x, player->y)
-                > calcDistance(map, msg, i, j + 1, player->x, player->y)))
+                    (flag || map[target.x][target.y].minstep > map[i][j + 1].minstep))
                 {
+                    flag = 0;
                     target.x = i;
                     target.y = j + 1;
                 }
@@ -960,30 +1111,56 @@ seedcup::ActionType Mine(vector<vector<POSITION>>& map, GameMsg& msg, POINT* nex
         return SILENT;
     seedcup::ActionType action = FindWayPosition(map, msg.players[msg.player_id], point, nextStepPosition);
     if ((msg.grid[player->x][player->y].bomb_id == -1) && (player->bomb_now_num < player->bomb_max_num) &&
-        (action == SILENT))
+        ((point.x == player->x) && (point.y == player->y)))
     {
-        
         action = PLACED;
     }
     return action;
 }
-int Judgecollectionnecessity(vector<vector<POSITION>>& map,GameMsg& msg)
-{//该函数使用5作为视野范围，但这是否是最佳值有待考证。
-    //copilot推荐5应该考虑自己的移动速度。
-    //copilot太可爱了捏。
-	auto player = msg.players[msg.player_id];
-	int flag=0;
-	for(int i=0;i<map.size();i++)
+int Judgecollectionnecessity(vector<vector<POSITION>>& map, GameMsg& msg)
+{
+    auto player = msg.players[msg.player_id];
+    int flag = 0;
+    for (int i = 0; i < map.size(); i++)
     {
-	    for(int j=0;j<map.size();j++)
+        for (int j = 0; j < map.size(); j++)
         {
-            if ((msg.grid[i][j].item != NULLITEM) && (i >= player->x - CollectRange) && (i <= player->x + CollectRange) && (j <= player->y + CollectRange) && (j >= player->y - CollectRange))
-                flag++;
-		}
-	}
-	if(flag!=0) 
+            if ((msg.grid[i][j].item != NULLITEM) && (map[i][j].isRechable) && (map[i][j].minstep < CollectStepMax))
+            {
+                if ((!player->has_gloves) || (msg.grid[i][j].item != GLOVES))
+                    flag++;
+            }
+        }
+    }
+    if (flag != 0)
         return 1;
-	else 
+    else
+        return 0;
+}
+int JudgeStrictCollectionnecessity(vector<vector<POSITION>>& map, GameMsg& msg)
+{
+    auto player = msg.players[msg.player_id];
+    int flag = 0;
+    for (int i = 0; i < map.size(); i++)
+    {
+        for (int j = 0; j < map.size(); j++)
+        {
+            if ((msg.grid[i][j].item != NULLITEM) && (map[i][j].isRechable) && (map[i][j].minstep < CollectStepMax))
+            {
+                if ((!player->has_gloves) || msg.grid[i][j].item != GLOVES)
+                    flag++;
+                if ((msg.grid[i][j].item == SPEED) && map[i][j].minstep < 7)
+					flag += 10;
+                if ((msg.grid[i][j].item == HP) && map[i][j].minstep < 7)
+                    flag += 10;
+                if (msg.grid[i][j].item == INVINCIBLE && map[i][j].minstep < 7)
+                    flag += 10;
+            }
+        }
+    }
+    if (flag >= 10)
+        return 1;
+    else
         return 0;
 }
 POINT FindSuitableCollectionPosition(vector<vector<POSITION>>& map, GameMsg& msg)
@@ -993,27 +1170,34 @@ POINT FindSuitableCollectionPosition(vector<vector<POSITION>>& map, GameMsg& msg
     for (int i = 0; i < map.size(); i++) {
         for (int j = 0; j < map.size(); j++) {
             if (target.x == map.size() * 2) {
-                if ((msg.grid[i][j].item != NULLITEM) && (i >= player->x - CollectRange) && (i <= player->x + CollectRange) && (j <= player->y + CollectRange) && (j >= player->y - CollectRange) &&
-                    (!map[i][j].dangernum))
+                if ((msg.grid[i][j].item != NULLITEM) && (map[i][j].isRechable) && (map[i][j].minstep < CollectStepMax) &&
+                    ((!player->has_gloves) || (msg.grid[i][j].item != GLOVES)) &&
+                    ((map[i][j].dangernum < 3) || (2 * map[i][j].minstep < CollectStepMax)))
                 {
                     target.x = i;
                     target.y = j;
                 }
             }
             else {
-                if (!player->has_gloves) {
-                    if ((msg.grid[i][j].item != NULLITEM) && (i >= player->x - CollectRange) && (i <= player->x + CollectRange) && (j <= player->y + CollectRange) && (j >= player->y - CollectRange) &&
-                        (!map[i][j].dangernum) && msg.grid[i][j].item > msg.grid[target.x][target.y].item)
-                    {
-                        target.x = i;
-                        target.y = j;
+                if ((msg.grid[i][j].item != NULLITEM) && (map[i][j].isRechable) && (map[i][j].minstep < CollectStepMax) &&
+					((!player->has_gloves) || (msg.grid[i][j].item != GLOVES)) &&
+                    ((map[i][j].dangernum < 3) || (2 * map[i][j].minstep < CollectStepMax)))
+                {
+                    if (!player->has_gloves) {
+                        if (msg.grid[i][j].item > msg.grid[target.x][target.y].item ||
+                            ((msg.grid[i][j].item == msg.grid[target.x][target.y].item) && (map[i][j].minstep < map[target.x][target.y].minstep)))
+                        {
+                            target.x = i;
+                            target.y = j;
+                        }
                     }
-                }
-                else {
-                    if ((msg.grid[i][j].item != NULLITEM) && (i >= player->x - CollectRange) && (i <= player->x + CollectRange) && (j <= player->y + CollectRange) && (j >= player->y - CollectRange) &&
-                        (!map[i][j].dangernum) && msg.grid[i][j].item > msg.grid[target.x][target.y].item && msg.grid[i][j].item != GLOVES) {
-                        target.x = i;
-                        target.y = j;
+                    else {
+                        if ((msg.grid[i][j].item > msg.grid[target.x][target.y].item && msg.grid[i][j].item != GLOVES) ||
+							((msg.grid[i][j].item == msg.grid[target.x][target.y].item) && (map[i][j].minstep < map[target.x][target.y].minstep))
+                            ) {
+                            target.x = i;
+                            target.y = j;
+                        }
                     }
                 }
             }
