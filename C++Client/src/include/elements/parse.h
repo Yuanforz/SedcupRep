@@ -28,6 +28,14 @@ enum ActionType {
   PLACED, // 放置炸弹或者道具 相当于空格
 };
 
+enum BombStatus {
+    BOMB_SILENT = 0,
+    BOMB_MOVE_LEFT,
+    BOMB_MOVE_RIGHT,
+    BOMB_MOVE_UP,
+    BOMB_MOVE_DOWN,
+};
+
 enum ObjType {
   NULLOBJ = 0,
   PLAYER = 1,
@@ -41,7 +49,7 @@ enum ItemType {
     BOMB_RANGE,
     BOMB_NUM,
     HP,
-    INVENCIBLE,
+    INVINCIBLE,
     SHIELD,
     SPEED,
     GLOVES,
@@ -69,7 +77,7 @@ struct Bomb {
   int y;
   int bomb_id;
   int bomb_range;
-  int bomb_status;
+  BombStatus bomb_status;
   int player_id;
   int last_place_round = -1;
 };
