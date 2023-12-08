@@ -3,6 +3,15 @@ cmake_minimum_required(VERSION 3.22.1)
 # project name
 project(seedcup-cppclient)
 
+# optimize project
+#if(NOT CMAKE_BUILD_TYPE)
+set(CMAKE_BUILD_TYPE Release)
+#endif()
+set(CMAKE_CXX_FLAGS_RELEASE -Ofast)
+ 
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -O3  -Wall")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3  -Wall")
+
 # set c++ version
 set(CMAKE_CXX_STANDARD 17)
 
@@ -15,6 +24,6 @@ include_directories(./util)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ../bin)
 
 # add source
-aux_source_directory(. DIR_SRCS)
+#aux_source_directory(. DIR_SRCS)
 aux_source_directory(./util DIR_SRCS)
-add_executable(client ${DIR_SRCS})
+add_executable(client ${DIR_SRCS} "function.cpp" "function.h" "main.cpp")

@@ -10,4 +10,6 @@
 using namespace std;
 using namespace seedcup;
 
+#define ON_DEBUG 1
+
 ActionType act(GameMsg& msg, SeedCup& server, int currentNum);
