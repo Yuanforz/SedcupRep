@@ -100,6 +100,7 @@ seedcup::ActionType Collection(vector<vector<POSITION>>& map,GameMsg& msg,POINT*
 seedcup::ActionType MakeDecision(vector<vector<POSITION>>& map, GameMsg& msg, int currentNum);
 bool IsSafeIfPlaceBomb(vector<vector<POSITION>>& map, GameMsg& msg, POINT& target, int currentNum, bool renew = false);
 bool IsAbleToFindSafe(vector<vector<POSITION>>& map, GameMsg& msg, int currentNum);
+bool IsStrictAbleToFindSafe(vector<vector<POSITION>>& map, GameMsg& msg, int currentNum);
 seedcup::ActionType FindDirectionOnBomb(vector<vector<POSITION>>& map, GameMsg& msg, int currentNum, POINT* nextStepPosition=nullptr);
 int CalcRechableArea(vector<vector<POSITION>>& map);
 bool FindWayBombPush(vector<vector<POSITION>>& map, GameMsg& msg, POINT bombtarget, POINT& goplace);
@@ -155,6 +156,7 @@ seedcup::ActionType MakeDecision(vector<vector<POSITION>>& positionmap, GameMsg&
     static int count = 0;//counting
     static int pushnum = 0;
     bool token = 1;
+    bool isPushtoEscape = false;
     //if (positionmap[player->x][player->y].dangernum <= 2||pushnum!=0)
     //{
     //    if (pushnum != 0) {
@@ -351,6 +353,10 @@ seedcup::ActionType MakeDecision(vector<vector<POSITION>>& positionmap, GameMsg&
                 cout << "Find FAILED\n";
                 returnnum = SILENT;
             }
+            else
+            {
+                isPushtoEscape = true;
+            }
         }
         else
         {
@@ -366,7 +372,7 @@ seedcup::ActionType MakeDecision(vector<vector<POSITION>>& positionmap, GameMsg&
     //if (count > 40)
     //    returnnum = PLACED;
 
-    if (msg.grid[player->x][player->y].bomb_id != -1)
+    if ((msg.grid[player->x][player->y].bomb_id != -1) && (!isPushtoEscape))
     {
         cout << "On a bomb,start avoid function.\n";
         returnnum = FindDirectionOnBomb(positionmap, msg, currentNum);
@@ -619,7 +625,7 @@ void FindSafeRegion(vector<vector<POSITION>>& array, GameMsg& msg)//0 is safe,n 
     //    for (int j = 0; j < array.size(); j++)
     //        array[i][j].dangernum = array[i][j].dangernum ? (array[i][j].dangernum + 1) : 0;
     std::shared_ptr<Player> enemy = msg.players[FindEnemyID(msg)];
-    if ((enemy->invincible_time != 0) && (array[enemy->x][enemy->y].isRechable))
+    if (enemy->invincible_time != 0)
     {
         cout<<"Find enemy invincible"<<endl;
         //暂时不使用寻路算法，因为speed = 2时非常没必要，且需要针对机器人的可到达路径修改函数
@@ -712,6 +718,7 @@ void FindRechableRegion(vector<vector<POSITION>>& array, GameMsg& msg)
         if ((target.y < map.size() - 1) && (!checkedmap[target.x][target.y + 1]))
             waitedarr.emplace_front(target.x, target.y + 1);
     }
+    array[msg.players[msg.player_id]->x][msg.players[msg.player_id]->y].isRechable = true;
 }
 
 void CalcCostMap(vector<vector<POSITION>>& array, GameMsg& msg, int mode)
@@ -1425,7 +1432,7 @@ seedcup::ActionType FindDirectionOnBomb(vector<vector<POSITION>>& map, GameMsg& 
                     FindRechableRegion(tempmap, msg);
                     FindSafeRegion(tempmap, msg);//由于实现原理，请放置在findreachableregion函数之后
                     CalcCostMap(tempmap, msg);
-                    if (IsAbleToFindSafe(tempmap, msg, currentNum))
+                    if (IsStrictAbleToFindSafe(tempmap, msg, currentNum))
                     {
                         if ((currentDirection == -1) || ((CalcRechableArea(tempmap) > currentRechableArea)))
                         {
@@ -1470,6 +1477,24 @@ bool IsAbleToFindSafe(vector<vector<POSITION>>& map, GameMsg& msg,int currentNum
     return false;
 }
 
+bool IsStrictAbleToFindSafe(vector<vector<POSITION>>& map, GameMsg& msg, int currentNum)
+{
+    auto& player = msg.players[msg.player_id];
+    for (int i = 0; i < map.size(); i++)
+        for (int j = 0; j < map.size(); j++)
+            if (map[i][j].isRechable && (map[i][j].dangernum<5))
+            {
+                if (map[i][j].minstep <= player->speed  - currentNum)
+                {
+                    //printf("Safe point is");
+                    return true;
+                }
+                else
+                    continue;
+            }
+    return false;
+}
+
 //This function have not completed
 int FindEscapeWay(vector<vector<POSITION>>& array, GameMsg& msg, int currentNum)
 {
@@ -1493,7 +1518,7 @@ bool FindWayBombPush(vector<vector<POSITION>>& map, GameMsg& msg,POINT bombtarge
             fromx = bombtarget.x + i;
             fromy = bombtarget.y + j;
             targetx= bombtarget.x - i;
-            targety = bombtarget.y + j;
+            targety = bombtarget.y - j;
             if ((fromx >= 0) && (fromx < map.size()) && (fromy >= 0) && (fromy < map.size())
                 && (targetx >= 0) && (targetx < map.size()) && (targety >= 0) && (targety < map.size()))
                     if(map[fromx][fromy].isRechable)
@@ -1603,3 +1628,4 @@ seedcup::ActionType PushEscape(vector<vector<POSITION>>& map, GameMsg& msg, POIN
 
     return action;
 }
+
